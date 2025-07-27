@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Crypto Crash Tester</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 30px; background: #111; color: #fff; }
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+    #log { margin-top: 20px; text-align: left; max-width: 600px; margin-inline: auto; background: #222; padding: 10px; border-radius: 8px; height: 300px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <h1>💥 Crypto Crash WebSocket Test</h1>
+
+  <div>
+    <input id="username" placeholder="Username" value="test" />
+    <select id="crypto">
+      <option value="BTC">BTC</option>
+      <option value="ETH">ETH</option>
+    </select>
+    <input id="amount" type="number" value="0.001" step="0.0001" />
+    <button onclick="joinRound()">🎮 Join Round</button>
+    <button onclick="cashout()">💸 Cash Out</button>
+  </div>
+
+  <h2>Multiplier: <span id="multiplier">--</span></h2>
+  <div id="log"></div>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const socket = io('http://localhost:3000');
+    const log = (msg) => {
+        console.log("Message is",msg);
+      const div = document.getElementById("log");
+      div.innerHTML += `<div>> ${msg}</div>`;
+      div.scrollTop = div.scrollHeight;
+    };
+
+    socket.on("connect", () => {
+      log("Connected to server: " + socket.id);
+    });
+
+    socket.on("roundStart", (data) => {
+      log(`New Round #${data.roundNumber}, Seed Hash: ${data.seedHash}`);
+    });
+
+    socket.on("multiplierUpdate", (data) => {
+      document.getElementById("multiplier").innerText = data.multiplier.toFixed(2);
+    });
+
+    socket.on("roundCrash", (data) => {
+      log(` Round Crashed at ${data.crashPoint.toFixed(2)}x`);
+    });
+
+    socket.on("playerCashout", (data) => {
+        console.log(data);
+      log(`💰 ${data.username} cashed out at ${data.multiplier}x = ${data.cryptoAmount.toFixed(6)} ${data.crypto} ($${data.usdAmount.toFixed(2)})`);
+    });
+
+    socket.on("cashoutFailed", (data) => {
+      log(`Cashout failed: ${data.reason}`);
+    });
+
+    function joinRound() {
+      const username = document.getElementById("username").value;
+      const crypto = document.getElementById("crypto").value;
+      const cryptoAmount = parseFloat(document.getElementById("amount").value);
+
+      socket.emit("joinRound", { username, crypto, cryptoAmount });
+      log(`Joined round with ${cryptoAmount} ${crypto}`);
+    }
+
+    function cashout() {
+      socket.emit("cashoutRequest");
+      log("Cashout requested");
+    }
+  </script>
+</body>
+</html>
